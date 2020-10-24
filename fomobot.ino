@@ -17,9 +17,81 @@ SoftwareSerial servoSerial(8, 9);
 #define SS_RIGH_ID_TRIG 4
 #define SS_RIGH_ID_ECHO 5
 
+#define MAX_SPEED 100
+
+int currentSpeed = 0;
+int desiredSpeed = 100;
+
+int distanceRight = 0;
+int distanceLeft = 0;
+int distanceFront = 0;
+
+const int minFrontDistance = 30;
+const int minSideDistance = 20;
+const int stuckDistance = 10;
+
+const int delayTime = 150;
+
+
 // Create one LSS object
-LSS myLSS0 = LSS(LSS_ID0);
-LSS myLSS1 = LSS(LSS_ID1);
+LSS leftWheel = LSS(LSS_ID0);
+LSS rightWheel = LSS(LSS_ID1);
+
+void setRightWheel(int speeed) {
+  //invert one value
+  rightWheel.wheelRPM(speeed * -1);
+}
+
+void setLeftWheel(int speeed) {
+  leftWheel.wheelRPM(speeed);
+}
+
+void stopCar () {
+  setRightWheel(0);
+  setLeftWheel(0);
+}
+
+void goFull() {
+  desiredSpeed = MAX_SPEED;
+  currentSpeed = currentSpeed + round((desiredSpeed - currentSpeed) * 0.1);
+  Serial.print("Go Full");
+  Serial.println(currentSpeed);
+  rightWheel.wheelRPM(60);
+  leftWheel.wheelRPM(60);
+}
+
+void go() {
+  desiredSpeed = 40;
+  currentSpeed = currentSpeed + round((desiredSpeed - currentSpeed) * 0.1);
+}
+
+void goForwardFull () {
+  Serial.println("goForwardFull");
+  Serial.println(currentSpeed);
+  goFull();
+  setLeftWheel(currentSpeed);
+  setRightWheel(currentSpeed);
+}
+
+void goLeft () {
+  Serial.println("goLeft");
+  go();
+  setLeftWheel(0);
+  setRightWheel(currentSpeed);
+}
+
+void goRight () {
+  Serial.println("goRight");
+  go();
+  setLeftWheel(0);
+  setRightWheel(currentSpeed);
+}
+
+void goBack () {
+  Serial.println("goBack");
+  setLeftWheel(-100);
+  setRightWheel(-100);
+}
 
 
 void setup() {
@@ -36,29 +108,57 @@ void setup() {
   // Initialize the LSS bus
   LSS::initBus(servoSerial, LSS_BAUD);
   Serial.begin(LSS_BAUD);
+
+  Serial.println(LSS_DefaultBaud);
 }
 
 void loop() {
   // Move the LSS continuously in one direction
-  myLSS0.wheelRPM(-0);
-  myLSS1.wheelRPM(0);
 
   trigSonicSensor(SS_LEFT_ID_TRIG);
-  int val1 = readSonicSensor(SS_LEFT_ID_ECHO);
+  distanceLeft = readSonicSensor(SS_LEFT_ID_ECHO);
   trigSonicSensor(SS_CENT_ID_TRIG);
-  int val2 = readSonicSensor(SS_CENT_ID_ECHO);
+  distanceFront = readSonicSensor(SS_CENT_ID_ECHO);
   trigSonicSensor(SS_RIGH_ID_TRIG);
-  int val3 = readSonicSensor(SS_RIGH_ID_ECHO);
+  distanceRight = readSonicSensor(SS_RIGH_ID_ECHO);
 
-  val1 = convertSonicSensorValueToCm(val1);
-  val2 = convertSonicSensorValueToCm(val2);
-  val3 = convertSonicSensorValueToCm(val3);
+  distanceLeft = convertSonicSensorValueToCm(distanceLeft);
+  distanceFront = convertSonicSensorValueToCm(distanceFront);
+  distanceRight = convertSonicSensorValueToCm(distanceRight);
 
-  Serial.print(val1);
+  Serial.print(distanceLeft);
   Serial.print(" ");
-  Serial.print(val2);
+  Serial.print(distanceFront);
   Serial.print(" ");
-  Serial.println(val3);
+  Serial.println(distanceRight);
+
+  doTheThing();
+  //goFull();
+}
+
+void doTheThing() {
+    if ((distanceFront <= minFrontDistance) || (distanceLeft <= minSideDistance) || (distanceRight <= minSideDistance)) {
+      if ((distanceLeft < stuckDistance) || (distanceRight < stuckDistance) || (distanceFront < stuckDistance)) {
+        goBack();
+        delay(1.5*delayTime);
+      }
+      else if ((distanceFront <= minFrontDistance) && (distanceLeft <= minSideDistance) && (distanceRight <= minSideDistance)) {
+        goBack();
+        delay(1.5*delayTime);
+      }
+      else if (distanceLeft > distanceRight ) {
+        goLeft();
+        delay(delayTime);
+      }
+      else if (distanceLeft <= distanceRight) {
+        goRight();
+        delay(delayTime);
+      }
+      else
+        goForwardFull();
+    }
+    else
+      goForwardFull(); 
 }
 
 int convertSonicSensorValueToCm(int sensorValue) {
@@ -66,7 +166,11 @@ int convertSonicSensorValueToCm(int sensorValue) {
 }
 
 int readSonicSensor(int echoSonicSensorId) {
-  return pulseIn(echoSonicSensorId, HIGH);
+  int val = pulseIn(echoSonicSensorId, HIGH);
+  if (val < 0) {
+    val = 999;  
+  }
+  return val;
 }
 
 /**
