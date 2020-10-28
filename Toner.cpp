@@ -10,7 +10,6 @@ Toner::Toner(int pin) {
 
 void Toner::speak() {
   int K = 1000;
-  Serial.println("speak inter");
   switch (random(1, 7)) {
     case 1: phrase1(); break;
     case 2: phrase2(); break;
@@ -20,15 +19,13 @@ void Toner::speak() {
     case 6: phrase2(); phrase1(); phrase2(); break;
   }
   for (int i = 0; i <= random(3, 9); i++) {
-
-
     tone(tonerPin, K + random(-1700, 2000));
     delay(random(70, 170));
     noTone(tonerPin);
     delay(random(0, 30));
   }
   noTone(tonerPin);
-  delay(random(2000, 4000));
+  //delay(random(2000, 4000));
 }
 
 void Toner::phrase1() {

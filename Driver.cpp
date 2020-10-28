@@ -19,28 +19,32 @@ Driver::Driver(SoftwareSerial &servoSerial) {
 }
 
 void Driver::setRightWheel(int speeed) {
-  //invert one value
   rightWheel.wheelRPM(speeed);
 }
 
 void Driver::setLeftWheel(int speeed) {
+    //invert one value
   leftWheel.wheelRPM(speeed * -1);
 }
 
 void Driver::stopCar () {
+  state = "StopCar";
+  Serial.println(state);
   setRightWheel(0);
   setLeftWheel(0);
 }
 
 void Driver::goFull() {
-  Serial.println("Go Full");
+  state = "Go Full";
+  Serial.print("Go Full: ");
+  Serial.println(MAX_SPEED);
+  
   rightWheel.wheelRPM(MAX_SPEED);
   leftWheel.wheelRPM(MAX_SPEED);
 }
 
 void Driver::go() {
-  desiredSpeed = 40;
-  currentSpeed = currentSpeed + round((desiredSpeed - currentSpeed) * 0.1);
+  currentSpeed = 30;
 }
 
 void Driver::goForwardFull () {
@@ -50,20 +54,21 @@ void Driver::goForwardFull () {
 }
 
 void Driver::goLeft () {
+  state = "goLeft";
   Serial.println("goLeft");
-  go();
   setLeftWheel(0);
-  setRightWheel(currentSpeed);
+  setRightWheel(30);
 }
 
 void Driver::goRight () {
+  state = "goRight";
   Serial.println("goRight");
-  go();
-  setLeftWheel(0);
-  setRightWheel(currentSpeed);
+  setLeftWheel(30);
+  setRightWheel(0);
 }
 
 void Driver::goBack () {
+  state = "goBack";
   Serial.println("goBack");
   setLeftWheel(-100);
   setRightWheel(-100);
@@ -92,4 +97,20 @@ void Driver::drive() {
   }
   else
     goForwardFull();
+}
+
+void Driver::shake() {
+
+  stopCar();
+  delay(1000);
+  for (int i = 0; i < 10; i++) {
+    setRightWheel(MAX_SPEED);
+    setLeftWheel(-MAX_SPEED);
+    delay(50);
+    setLeftWheel(-MAX_SPEED);
+    setRightWheel(MAX_SPEED);
+    delay(50);
+  }
+  stopCar();
+  delay(1000);
 }

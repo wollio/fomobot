@@ -4,9 +4,9 @@
 #include "Arduino.h"
 #include <LSS.h>
 
-const int minFrontDistance = 15;
-const int minSideDistance = 10;
-const int stuckDistance = 5;
+const int minFrontDistance = 20;
+const int minSideDistance = 25;
+const int stuckDistance = 10;
 const int delayTime = 150;
 
 class Driver
@@ -17,7 +17,10 @@ class Driver
     int distanceRight;
     int distanceLeft;
     int distanceFront;
+    void stopCar();
     void drive();
+    void shake();
+    String state;
   private:
     int currentSpeed;
     int desiredSpeed;
@@ -25,7 +28,6 @@ class Driver
     LSS rightWheel;
     void setRightWheel(int speeed);
     void setLeftWheel(int speeed);
-    void stopCar();
     void go();
     void goFull();
     void goForwardFull();
