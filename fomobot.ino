@@ -6,6 +6,7 @@
 
 //LynxMotion TX / RX
 SoftwareSerial servoSerial(8, 9);
+
 Driver driver;
 Toner toner;
 
@@ -28,10 +29,12 @@ const char topic[]  = "/wollio/fomobot";
 NTPClient timeClient(ntpUDP);
 
 //Printer
+// Printer RX, TX (on Board)
 SoftwareSerial printerSerial(PRINT_ID_RXD, PRINT_ID_TXD);
-Adafruit_Thermal printer(&printerSerial);     // Pass addr to printer constructor
+Adafruit_Thermal printer(&printerSerial, A5);     // Pass addr to printer constructor
 
-int lastPrint = 0;
+float lastPrint = 0;
+float getNextEventAt = 0.0;
 int nextSpeak = 0;
 int lastKeepAlive = 0;
 
@@ -43,10 +46,10 @@ void setup() {
   //Wait for WiFi to connect
   WiFi.begin(ssid, password);
 
-  while ( WiFi.status() != WL_CONNECTED ) {
+  /*while ( WiFi.status() != WL_CONNECTED ) {
     delay ( 500 );
     Serial.print ( "." );
-  }
+  }*/
 
   driver = Driver(servoSerial);
   toner = Toner(SPEAKER_PIN_ID);
@@ -64,7 +67,6 @@ void setup() {
   if (!mqttClient.connect(broker, port)) {
     Serial.print("MQTT connection failed! Error code = ");
     Serial.println(mqttClient.connectError());
-
     while (1);
   }
 
@@ -89,6 +91,10 @@ void setup() {
   //Start NTP time request
   timeClient.begin();
 
+  printerSerial.begin(9600);  // Initialize SoftwareSerial
+  printer.wake();       // MUST wake() before printing again, even if reset
+  printer.setDefault(); // Restore printer to defaults
+
   //Setup sonic sensor pins
   pinMode(SS_LEFT_ID_TRIG, OUTPUT);
   pinMode(SS_LEFT_ID_ECHO, INPUT);
@@ -96,28 +102,25 @@ void setup() {
   pinMode(SS_CENT_ID_ECHO, INPUT);
   pinMode(SS_RIGH_ID_TRIG, OUTPUT);
   pinMode(SS_RIGH_ID_ECHO, INPUT);
+
+  pinMode(A5, OUTPUT);
+}
+
+void getEvent() {
+  getNextEventAt = (millis() + random(10000, 20000)) / 1000;
+  sendMqttMessage("getEvent");   
+}
+
+void sendMqttMessage(String msg) {
+    mqttClient.beginMessage(topic);
+    mqttClient.print(msg);
+    mqttClient.endMessage();
 }
 
 void loop() {
+  analogWrite(A5, HIGH);
   // Move the LSS continuously in one direction
   mqttClient.poll();
-
-  // publish a message roughly every second.
-  if(millis() > lastKeepAlive) {
-    Serial.println("Send mqtt");
-    lastKeepAlive = millis() + 10000;
-    mqttClient.beginMessage(topic);
-    mqttClient.print(driver.state);
-    mqttClient.endMessage();
-  }
-
-  if (lastPrint < millis() - 10000) {
-    Serial.println("print");
-    // Barcode examples:
-    // CODE39 is the most common alphanumeric barcode:
-    //printer.setBarcodeHeight(100);
-    //printer.printBarcode("ADAFRUT", CODE39);
-  }
 
   if (millis() > nextSpeak) {
     Serial.println("speak");
@@ -148,6 +151,20 @@ void loop() {
   } else {
     driver.drive();
   }
+
+  if (getNextEventAt < (millis() / 1000)) {
+    getEvent();
+  }
+
+  if (lastPrint < (millis() / 1000)) {
+    Serial.println("print");
+    printTheFuck();
+    
+    driver.cut();
+    printer.feed(2);
+    lastPrint = (millis() + 10000) / 1000; 
+  }
+  Serial.println(lastPrint);
 }
 
 void onMqttMessage(int messageSize) {
@@ -174,8 +191,55 @@ int readSonicSensor(int echoSonicSensorId) {
   return val;
 }
 
-/**
+void printTheFuck() {
+  Serial.println("printing...");
 
+  printer.setLineHeight(60);
+  printer.justify('C');
+  printer.setSize('L');
+  printer.setLineHeight(40);
+  printer.println(F("     *     "));
+  printer.println(F("FOMOBOT"));
+  printer.println(F("FOMOBOT"));
+  printer.println(F("FOMOBOT"));
+  printer.println(F("     *     "));
+
+  printer.setSize('L');
+  printer.println(F("4K22"));
+  printer.println(F(" 28.10.2020 "));
+  printer.println(F("13:00"));
+
+  printer.setLineHeight(60);
+  printer.justify('C');
+  printer.setSize('M');
+  
+  printer.setLineHeight();
+  printer.println(F("ZHdK"));
+  printer.println(F("ZURICH"));
+
+  
+  printer.setSize('L');
+  printer.setLineHeight(40);
+  printer.println(F("*"));
+  printer.println(F("BE THERE!"));
+  printer.println(F("*"));
+
+  printer.setLineHeight(60); // Cut Spacing
+  printer.justify('C');
+  printer.setSize('L');
+  printer.println(F(" "));
+  printer.println(F(" "));
+  printer.println(F(" "));
+  printer.println(F(" "));
+  printer.feed(10);
+
+  printer.sleep();      // Tell printer to sleep
+  delay(3000L);         // Sleep for 3 seconds
+  printer.wake();       // MUST wake() before printing again, even if reset
+  printer.setDefault(); // Restore printer to defaults
+}
+
+/**
    This triggers the sonic sensor
 */
 void trigSonicSensor(int triggerSonicSensorId) {

@@ -11,6 +11,7 @@
 
 #define LSS_ID0    (0)
 #define LSS_ID1    (1)
+#define LSS_ID2    (2)
 
 #define LSS_BAUD  (LSS_DefaultBaud)
 

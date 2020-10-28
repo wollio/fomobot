@@ -16,6 +16,8 @@ Driver::Driver(SoftwareSerial &servoSerial) {
 
   leftWheel = LSS(LSS_ID0);
   rightWheel = LSS(LSS_ID1);
+  cutWheel = LSS(LSS_ID2);
+  cutWheel.limp();
 }
 
 void Driver::setRightWheel(int speeed) {
@@ -23,7 +25,7 @@ void Driver::setRightWheel(int speeed) {
 }
 
 void Driver::setLeftWheel(int speeed) {
-    //invert one value
+  //invert one value
   leftWheel.wheelRPM(speeed * -1);
 }
 
@@ -38,7 +40,7 @@ void Driver::goFull() {
   state = "Go Full";
   Serial.print("Go Full: ");
   Serial.println(MAX_SPEED);
-  
+
   rightWheel.wheelRPM(MAX_SPEED);
   leftWheel.wheelRPM(MAX_SPEED);
 }
@@ -72,6 +74,14 @@ void Driver::goBack () {
   Serial.println("goBack");
   setLeftWheel(-100);
   setRightWheel(-100);
+}
+
+void Driver::cut() {
+  Serial.println("cut the fuck");
+  //myLSS.wheelRPM(60);
+  cutWheel.moveRelative(3600);
+  delay(5000);
+  Serial.println("stop");
 }
 
 void Driver::drive() {

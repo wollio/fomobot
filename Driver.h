@@ -20,12 +20,14 @@ class Driver
     void stopCar();
     void drive();
     void shake();
+    void cut();
     String state;
   private:
     int currentSpeed;
     int desiredSpeed;
     LSS leftWheel;
     LSS rightWheel;
+    LSS cutWheel;
     void setRightWheel(int speeed);
     void setLeftWheel(int speeed);
     void go();
