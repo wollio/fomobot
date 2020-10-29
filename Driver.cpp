@@ -18,6 +18,30 @@ Driver::Driver(SoftwareSerial &servoSerial) {
   rightWheel = LSS(LSS_ID1);
   cutWheel = LSS(LSS_ID2);
   cutWheel.limp();
+  Serial.print("init headwheel with id: ");
+  Serial.println(LSS_ID3);
+  headWheel = LSS(LSS_ID3);
+  delay(1000);
+  headWheel.move(0);
+  delay(1000);
+}
+
+void Driver::headDown() {
+  if (!isHeadDown) {
+    isHeadDown = true;
+    Serial.println("headDown");
+    headWheel.moveRelative(-440);
+    delay(1000);
+  }
+}
+
+void Driver::headUp() {
+  if (isHeadDown) {
+    isHeadDown = false;
+    Serial.println("headUp");
+    headWheel.move(0);
+    delay(1000);
+  }
 }
 
 void Driver::setRightWheel(int speeed) {

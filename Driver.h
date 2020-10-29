@@ -8,6 +8,7 @@ const int minFrontDistance = 20;
 const int minSideDistance = 25;
 const int stuckDistance = 10;
 const int delayTime = 150;
+const bool isHeadDown = false;
 
 class Driver
 {
@@ -17,17 +18,22 @@ class Driver
     int distanceRight;
     int distanceLeft;
     int distanceFront;
+    bool isHeadDown;
     void stopCar();
     void drive();
     void shake();
     void cut();
+    void headDown();
+    void headUp();
     String state;
   private:
     int currentSpeed;
     int desiredSpeed;
+    int headAngle;
     LSS leftWheel;
     LSS rightWheel;
     LSS cutWheel;
+    LSS headWheel;
     void setRightWheel(int speeed);
     void setLeftWheel(int speeed);
     void go();

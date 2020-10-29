@@ -4,6 +4,9 @@
 #include "Driver.h"
 #include "Toner.h"
 
+#define eventIntervalMin 5000
+#define eventIntervalMax 10000
+
 //LynxMotion TX / RX
 SoftwareSerial servoSerial(8, 9);
 
@@ -35,8 +38,9 @@ Adafruit_Thermal printer(&printerSerial, A5);     // Pass addr to printer constr
 
 float lastPrint = 0;
 float getNextEventAt = 0.0;
-int nextSpeak = 0;
+float speakNextAt = 0;
 int lastKeepAlive = 0;
+bool eyeOn = false;
 
 void setup() {
   Serial.begin(LSS_BAUD);
@@ -46,10 +50,10 @@ void setup() {
   //Wait for WiFi to connect
   WiFi.begin(ssid, password);
 
-  /*while ( WiFi.status() != WL_CONNECTED ) {
+  while ( WiFi.status() != WL_CONNECTED ) {
     delay ( 500 );
     Serial.print ( "." );
-  }*/
+  }
 
   driver = Driver(servoSerial);
   toner = Toner(SPEAKER_PIN_ID);
@@ -76,12 +80,14 @@ void setup() {
   Serial.print("Subscribing to topic: ");
   Serial.println(topic);
   Serial.println();
-
   // set the message receive callback
   mqttClient.onMessage(onMqttMessage);
 
   // subscribe to a topic
   mqttClient.subscribe(topic);
+
+
+  Serial.println("hello1.5");
 
   // NOTE: SOME PRINTERS NEED 9600 BAUD instead of 19200, check test page.
   printerSerial.begin(9600);  // Initialize SoftwareSerial
@@ -103,30 +109,41 @@ void setup() {
   pinMode(SS_RIGH_ID_TRIG, OUTPUT);
   pinMode(SS_RIGH_ID_ECHO, INPUT);
 
+  pinMode(EYE_PIN_ID, OUTPUT);
+
   pinMode(A5, OUTPUT);
 }
 
+void toogleEye() {
+  eyeOn = !eyeOn;
+}
+
 void getEvent() {
-  getNextEventAt = (millis() + random(10000, 20000)) / 1000;
-  sendMqttMessage("getEvent");   
+  getNextEventAt = (millis() + random(eventIntervalMin, eventIntervalMax)) / 1000;
+  sendMqttMessage("getEvent");
 }
 
 void sendMqttMessage(String msg) {
-    mqttClient.beginMessage(topic);
-    mqttClient.print(msg);
-    mqttClient.endMessage();
+  mqttClient.beginMessage(topic);
+  mqttClient.print(msg);
+  mqttClient.endMessage();
 }
 
 void loop() {
   analogWrite(A5, HIGH);
+
+  Serial.println("hello2");
+
   // Move the LSS continuously in one direction
   mqttClient.poll();
 
-  if (millis() > nextSpeak) {
+  if ((millis() / 1000) > speakNextAt) {
     Serial.println("speak");
     driver.stopCar();
-    toner.speak(); 
-    nextSpeak = millis() + random(10000, 20000);
+    driver.headDown();
+    toner.speak();
+    driver.headUp();
+    speakNextAt = (millis() + random(10000, 20000)) / 1000;
   }
 
   trigSonicSensor(SS_LEFT_ID_TRIG);
@@ -146,7 +163,7 @@ void loop() {
   Serial.print(" ");
   Serial.println(driver.distanceRight);
 
-  if (random(0,10) > 9) {
+  if (random(0, 10) > 9) {
     driver.shake();
   } else {
     driver.drive();
@@ -156,15 +173,23 @@ void loop() {
     getEvent();
   }
 
-  if (lastPrint < (millis() / 1000)) {
-    Serial.println("print");
-    printTheFuck();
-    
-    driver.cut();
-    printer.feed(2);
-    lastPrint = (millis() + 10000) / 1000; 
+}
+
+String getSplitVal(String data, char separator, int index)
+{
+  int found = 0;
+  int strIndex[] = {0, -1};
+  int maxIndex = data.length()-1;
+
+  for(int i=0; i<=maxIndex && found<=index; i++){
+    if(data.charAt(i)==separator || i==maxIndex){
+        found++;
+        strIndex[0] = strIndex[1]+1;
+        strIndex[1] = (i == maxIndex) ? i+1 : i;
+    }
   }
-  Serial.println(lastPrint);
+
+  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
 void onMqttMessage(int messageSize) {
@@ -174,7 +199,16 @@ void onMqttMessage(int messageSize) {
   while (mqttClient.available()) {
     payload = payload + (char)mqttClient.read();
   }
+
+  
+  
   Serial.println(payload);
+
+  Serial.println("print");
+  //printTheFuck();
+
+  driver.cut();
+  //printer.feed(2);
   // move servo motor
   // myLSS.move(payload.toInt());
 }
@@ -191,7 +225,7 @@ int readSonicSensor(int echoSonicSensorId) {
   return val;
 }
 
-void printTheFuck() {
+void printTheFuck(String msg, String date) {
   Serial.println("printing...");
 
   printer.setLineHeight(60);
@@ -199,25 +233,25 @@ void printTheFuck() {
   printer.setSize('L');
   printer.setLineHeight(40);
   printer.println(F("     *     "));
-  printer.println(F("FOMOBOT"));
-  printer.println(F("FOMOBOT"));
-  printer.println(F("FOMOBOT"));
+  printer.println(F(msg));
+  printer.println(F(msg));
+  printer.println(F(msg));
   printer.println(F("     *     "));
 
   printer.setSize('L');
   printer.println(F("4K22"));
-  printer.println(F(" 28.10.2020 "));
+  printer.println(F(date));
   printer.println(F("13:00"));
 
   printer.setLineHeight(60);
   printer.justify('C');
   printer.setSize('M');
-  
+
   printer.setLineHeight();
   printer.println(F("ZHdK"));
   printer.println(F("ZURICH"));
 
-  
+
   printer.setSize('L');
   printer.setLineHeight(40);
   printer.println(F("*"));
