@@ -4,8 +4,8 @@
 #include "Driver.h"
 #include "Toner.h"
 
-#define eventIntervalMin 5000
-#define eventIntervalMax 10000
+#define eventIntervalMin 15000
+#define eventIntervalMax 20000
 
 //LynxMotion TX / RX
 SoftwareSerial servoSerial(8, 9);
@@ -58,10 +58,6 @@ void setup() {
   driver = Driver(servoSerial);
   toner = Toner(SPEAKER_PIN_ID);
 
-  // You can provide a unique client ID, if not set the library uses Arduino-millis()
-  // Each client must have a unique client ID
-  // mqttClient.setId("clientId");
-
   // You can provide a username and password for authentication
   mqttClient.setUsernamePassword(MQTT_KEY, MQTT_PWD);
 
@@ -85,9 +81,6 @@ void setup() {
 
   // subscribe to a topic
   mqttClient.subscribe(topic);
-
-
-  Serial.println("hello1.5");
 
   // NOTE: SOME PRINTERS NEED 9600 BAUD instead of 19200, check test page.
   printerSerial.begin(9600);  // Initialize SoftwareSerial
@@ -130,9 +123,8 @@ void sendMqttMessage(String msg) {
 }
 
 void loop() {
+  //used to force the printer to print faster.
   analogWrite(A5, HIGH);
-
-  Serial.println("hello2");
 
   // Move the LSS continuously in one direction
   mqttClient.poll();
@@ -140,9 +132,7 @@ void loop() {
   if ((millis() / 1000) > speakNextAt) {
     Serial.println("speak");
     driver.stopCar();
-    driver.headDown();
     toner.speak();
-    driver.headUp();
     speakNextAt = (millis() + random(10000, 20000)) / 1000;
   }
 
@@ -163,11 +153,7 @@ void loop() {
   Serial.print(" ");
   Serial.println(driver.distanceRight);
 
-  if (random(0, 10) > 9) {
-    driver.shake();
-  } else {
-    driver.drive();
-  }
+  driver.drive();
 
   if (getNextEventAt < (millis() / 1000)) {
     getEvent();
@@ -179,38 +165,55 @@ String getSplitVal(String data, char separator, int index)
 {
   int found = 0;
   int strIndex[] = {0, -1};
-  int maxIndex = data.length()-1;
+  int maxIndex = data.length() - 1;
 
-  for(int i=0; i<=maxIndex && found<=index; i++){
-    if(data.charAt(i)==separator || i==maxIndex){
-        found++;
-        strIndex[0] = strIndex[1]+1;
-        strIndex[1] = (i == maxIndex) ? i+1 : i;
+  for (int i = 0; i <= maxIndex && found <= index; i++) {
+    if (data.charAt(i) == separator || i == maxIndex) {
+      found++;
+      strIndex[0] = strIndex[1] + 1;
+      strIndex[1] = (i == maxIndex) ? i + 1 : i;
     }
   }
 
-  return found>index ? data.substring(strIndex[0], strIndex[1]) : "";
+  return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
 
 void onMqttMessage(int messageSize) {
   // we received a message, print out the topic and contents
   // use the Stream interface to print the contents
+  
   String payload = "";
   while (mqttClient.available()) {
     payload = payload + (char)mqttClient.read();
   }
 
-  
-  
+  driver.stopCar();
+
+  Serial.print("payload: ");
   Serial.println(payload);
+  if (!payload.equals("getEvent")) {
+    Serial.println(payload);
 
-  Serial.println("print");
-  //printTheFuck();
+    Serial.println("print");
+    Serial.println(getSplitVal(payload, '@', 1));
+    delay(5000);
+    driver.headDown();
+    digitalWrite(12, HIGH);
+    delay(3000);
+    digitalWrite(12, LOW);
+    printTheFuck(getSplitVal(payload, '@', 0), getSplitVal(payload, '@', 1));
+    toner.speak();
+    driver.headUp();
 
-  driver.cut();
-  //printer.feed(2);
-  // move servo motor
-  // myLSS.move(payload.toInt());
+    driver.cut();
+    printer.feed(20);
+    // move servo motor
+    // myLSS.move(payload.toInt());
+
+  }
+
+  driver.drive();
+
 }
 
 int convertSonicSensorValueToCm(int sensorValue) {
@@ -233,8 +236,6 @@ void printTheFuck(String msg, String date) {
   printer.setSize('L');
   printer.setLineHeight(40);
   printer.println(F("     *     "));
-  printer.println(F(msg));
-  printer.println(F(msg));
   printer.println(F(msg));
   printer.println(F("     *     "));
 
@@ -265,7 +266,7 @@ void printTheFuck(String msg, String date) {
   printer.println(F(" "));
   printer.println(F(" "));
   printer.println(F(" "));
-  printer.feed(10);
+  printer.feed(5);
 
   printer.sleep();      // Tell printer to sleep
   delay(3000L);         // Sleep for 3 seconds

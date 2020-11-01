@@ -18,7 +18,7 @@ Driver::Driver(SoftwareSerial &servoSerial) {
   rightWheel = LSS(LSS_ID1);
   cutWheel = LSS(LSS_ID2);
   cutWheel.limp();
-  Serial.print("init headwheel with id: ");
+  
   Serial.println(LSS_ID3);
   headWheel = LSS(LSS_ID3);
   delay(1000);
@@ -109,7 +109,19 @@ void Driver::cut() {
 }
 
 void Driver::drive() {
-  if ((distanceFront <= minFrontDistance) || (distanceLeft <= minSideDistance) || (distanceRight <= minSideDistance)) {
+
+  if (random(0,9) > 8) {
+    goRight();  
+    Serial.println("forceRight");
+    delay(1000);
+  } else if (random(0,9) > 8) {
+    goLeft();
+    Serial.println("forceLeft");
+    delay(1000);
+  } else {
+
+
+    if ((distanceFront <= minFrontDistance) || (distanceLeft <= minSideDistance) || (distanceRight <= minSideDistance)) {
     if ((distanceLeft < stuckDistance) || (distanceRight < stuckDistance) || (distanceFront < stuckDistance)) {
       goBack();
       delay(1.5 * delayTime);
@@ -131,20 +143,6 @@ void Driver::drive() {
   }
   else
     goForwardFull();
-}
-
-void Driver::shake() {
-
-  stopCar();
-  delay(1000);
-  for (int i = 0; i < 10; i++) {
-    setRightWheel(MAX_SPEED);
-    setLeftWheel(-MAX_SPEED);
-    delay(50);
-    setLeftWheel(-MAX_SPEED);
-    setRightWheel(MAX_SPEED);
-    delay(50);
   }
-  stopCar();
-  delay(1000);
+
 }

@@ -21,10 +21,11 @@ class Driver
     bool isHeadDown;
     void stopCar();
     void drive();
-    void shake();
     void cut();
     void headDown();
     void headUp();
+    void goLeft();
+    void goRight();
     String state;
   private:
     int currentSpeed;
@@ -39,8 +40,6 @@ class Driver
     void go();
     void goFull();
     void goForwardFull();
-    void goLeft();
-    void goRight();
     void goBack();
 };
 
